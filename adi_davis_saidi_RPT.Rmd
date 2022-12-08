@@ -1,0 +1,96 @@
+---
+title: "Adi-Davis-Saidi Randomization Post-Hoc Test"
+author: "Adi Ve"
+date: "`r Sys.Date()`"
+output: openintro::lab_report
+---
+
+```{r load-packages, message=FALSE}
+library(tidyverse)
+```
+
+### Post-Hoc Test
+
+Repeats a randomization test across all pairwise combinations of a treatment.
+
+```{r code-chunk-post_hoc}
+
+adi_saidi.RPT <- function(treatment, outcome, n = 1000, plot_dist = "FALSE") {
+  treatment_factor_levels <- length(unique(treatment))
+  tfl_choose2 <- treatment_factor_levels*(treatment_factor_levels - 1)/2
+  treatment_combns <- matrix(, nrow = tfl_choose2, ncol = 2)
+  ind <- 1
+  
+  for (i in 1:(treatment_factor_levels-1)) {
+      for (j in (i+1):(treatment_factor_levels)) {
+        treatment_combns[ind,1] <- unique(treatment)[i]
+        treatment_combns[ind,2] <- unique(treatment)[j]
+        ind <- ind+1
+      }
+    }
+  
+  TO_data <- data.frame(
+      treatment,
+      outcome)
+  p_value <- c()
+  effect_size <- c()
+  treatment_1 <- c()
+  treatment_2 <- c()
+  mean_diff <- c()
+  
+  for (k in 1:(nrow(treatment_combns))) {
+    data_filtering <- TO_data %>%
+      filter(treatment %in% c(treatment_combns[k, 1], treatment_combns[k,2]))
+    
+    treatment_particular <- data_filtering$treatment
+    outcome_particular <- data_filtering$outcome
+    
+    original <- diff(tapply(outcome_particular, treatment_particular, mean))
+    mean_diff_dist = c()
+
+    for(l in 1:n) {
+      mean_diff_dist[l] = diff(by(outcome_particular, sample(treatment_particular, length(treatment_particular), FALSE), mean))
+      }
+    
+    
+    
+    group1 <- data_filtering %>%
+      filter(treatment %in% c(treatment_combns[k, 1]))
+    group2 <- data_filtering %>%
+      filter(treatment %in% c(treatment_combns[k, 2]))
+    mean1 = mean(group1$outcome)
+    mean2 = mean(group2$outcome)
+    
+    p_value[k] = sum(abs(mean_diff_dist) >= abs(original))/(n)
+    mean_diff[k] = mean2 - mean1
+    effect_size[k] = (mean2-mean1)/sd(outcome_particular)
+    treatment_1[k] <- unique(treatment_particular)[1]
+    treatment_2[k] <- unique(treatment_particular)[2]
+  
+    if (plot_dist == "TRUE") {
+        hist(mean_diff_dist, breaks=50, col='grey', main="Randomization Distribution", 
+           las=1, xlab=(unique(treatment_particular)))
+        original <- diff(tapply(outcome_particular, treatment_particular, mean))
+        abline(v=original, lwd=3, col= "red")
+        abline(v=-original, lwd=3, col= "red")
+      }
+  
+    
+  }
+  
+  results <- data.frame(cbind(treatment_1, treatment_2, p_value, effect_size, mean_diff))
+  
+  return(results)
+}
+
+```
+
+
+```{r code-chunk-try_it_out}
+#* Hi User, you can test the function out here for yourself
+#* with any data you have in the global environment! 
+#* Read in your data here then run the next line of code. The syntax for the function
+#* is:
+#* adi_saidi.RPT(<data$treatment_variable>, <data$outcome_variable>, <n = number of times to resample>, <plot_dist = "TRUE/FALSE">)
+
+```
